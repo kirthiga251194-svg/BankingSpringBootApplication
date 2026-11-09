@@ -51,5 +51,21 @@ public class Customer {
 	
     @Temporal(TemporalType.TIME)
 	private Date updateDateTime;
+
+public Contact getContactDetails() {
+    return contactDetails;
+}
+
+public void setContactDetails(Contact contactDetails) {
+    this.contactDetails = contactDetails;
+}
+
+public void setCreateDateTime(Date createDateTime) {
+    this.createDateTime = createDateTime;
+}
+
+public Date getCreateDateTime() {
+    return createDateTime;
+}
 	
 }
