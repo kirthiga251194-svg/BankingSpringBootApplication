@@ -1,19 +1,44 @@
-- name : Deploy Pods on Docker Container
-  hosts : all
-  tasks : 
-  - name: Apt Update
-    apt:
-      update_cache: yes
 
-  - name: Install Docker
-    apt: name=docker.io state=latest
+---
+- name: Deploy Banking Application on AWS EC2
+  hosts: aws
+  become: true
 
-  - name: Remove Existing Container
-    command: "docker rm {{ containerName }}"
-    ignore_errors: true
+  tasks:
+    - name: Update APT package cache
+      apt:
+        update_cache: yes
 
-  - name: Performing Deployment of {{ dockerImageTag }}
-    command: "docker run -d --name {{ containerName }} -p {{ httpPort }}:{{ httpPort }} docker.io/{{ dockerImageTag }}"
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
 
-  - name: Get Container List
-    command: "docker ps"
+    - name: Start and enable Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Pull latest Banking application image
+      command: docker pull {{ dockerImageTag }}
+      
+    - name: Remove existing container
+      command: docker rm -f {{ containerName }}
+      failed_when: false
+
+    - name: Deploy Banking application
+      command: >
+        docker run -d
+        --name {{ containerName }}
+        -p {{ httpPort }}:{{ httpPort }}
+        {{ dockerImageTag }}
+
+    - name: Verify deployed container
+      command: docker ps
+      register: container_status
+
+    - name: Display running containers
+      debug:
+        var: container_status.stdout
+
