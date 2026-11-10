@@ -1,6 +1,5 @@
 
 ---
-- ---
 - name: Deploy Banking Application on AWS EC2
   hosts: bankpro-server
   become: true
@@ -23,7 +22,7 @@
 
     - name: Pull latest Banking application image
       command: docker pull {{ dockerImageTag }}
-      
+
     - name: Remove existing container
       command: docker rm -f {{ containerName }}
       failed_when: false
@@ -32,7 +31,7 @@
       command: >
         docker run -d
         --name {{ containerName }}
-        -p {{ httpPort }}:{{ httpPort }}
+        -p {{ httpPort }}:8080
         {{ dockerImageTag }}
 
     - name: Verify deployed container
@@ -42,4 +41,5 @@
     - name: Display running containers
       debug:
         var: container_status.stdout
+
 
