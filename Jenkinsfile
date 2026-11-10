@@ -108,7 +108,20 @@ stage('Maven Build') {
         }
     }
 
+
     // Stage 6: Ansible Playbook Execution
+
+echo 'Testing SSH connectivity from Jenkins'
+
+sh '''
+    ls -l /Users/karthik/Downloads/bankpro-key.pem
+
+    ssh -o BatchMode=yes \
+        -o IdentitiesOnly=yes \
+        -i /Users/karthik/Downloads/bankpro-key.pem \
+        ubuntu@54.147.51.192 'whoami'
+'''
+
     stage('Ansible Playbook Execution') {
 
         echo 'Deploying application using Ansible'
