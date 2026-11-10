@@ -1,47 +1,140 @@
-node{
-    
-    def tag, dockerHubUser, containerName, httpPort = ""
-    
-    stage('Prepare Environment'){
-        echo 'Initialize Environment'
-        tag="3.0"
-	withCredentials([usernamePassword(credentialsId: 'dockerHubAccount', usernameVariable: 'dockerUser', passwordVariable: 'dockerPassword')]) {
-		dockerHubUser="$dockerUser"
-        }
-	containerName="bankingapp"
-	httpPort="8989"
+
+node {
+
+    // Project configuration
+    env.IMAGE_NAME = "bankingapp"
+    env.CONTAINER_NAME = "bankingapp"
+    env.HTTP_PORT = "8989"
+    env.IMAGE_TAG = "${env.BUILD_NUMBER}"
+
+    // Stage 1: Prepare Environment
+    stage('Prepare Environment') {
+
+        echo 'Initializing Environment'
+
+        sh '''
+            echo "Checking environment..."
+            java -version
+            docker --version
+        '''
     }
-    
-    stage('Code Checkout'){
-        try{
+
+    // Stage 2: Code Checkout
+    stage('Code Checkout') {
+
+        echo 'Checking out source code from GitHub'
+
+        try {
             checkout scm
         }
-        catch(Exception e){
-            echo 'Exception occured in Git Code Checkout Stage'
+        catch (Exception e) {
+            echo "Exception occurred during Git Checkout: ${e}"
             currentBuild.result = "FAILURE"
+            throw e
         }
     }
-    
-    stage('Maven Build'){
-        sh "mvn clean package"        
-    }
-    
-    stage('Docker Image Build'){
-        echo 'Creating Docker image'
-        sh "docker build -t $dockerHubUser/$containerName:$tag --pull --no-cache ."
-    }  
-	
-    stage('Publishing Image to DockerHub'){
-        echo 'Pushing the docker image to DockerHub'
-        withCredentials([usernamePassword(credentialsId: 'dockerHubAccount', usernameVariable: 'dockerUser', passwordVariable: 'dockerPassword')]) {
-		sh "docker login -u $dockerUser -p $dockerPassword"
-		sh "docker push $dockerUser/$containerName:$tag"
-		echo "Image push complete"
-        } 
-    }    
-	stage('Ansible Playbook Execution'){
-			sh "export ANSIBLE_HOST_KEY_CHECKING=False && ansible-playbook -i inventory.yaml containerDeploy.yaml -e httpPort=$httpPort -e containerName=$containerName -e dockerImageTag=$dockerHubUser/$containerName:$tag -e key_pair_path=/var/lib/jenkins/server.pem --become" 
-	}
+
+    // Stage 3: Maven Build
+   
+
+stage('Maven Build') {
+
+    echo 'Building Spring Boot application using Java 11'
+
+    sh '''
+        set -e
+
+        # Explicitly select Java 11
+        export JAVA_HOME=$(/usr/libexec/java_home -v 11)
+        export PATH="$JAVA_HOME/bin:/opt/homebrew/bin:$PATH"
+
+        echo "========== VERIFY JAVA =========="
+        echo "JAVA_HOME=$JAVA_HOME"
+        java -version
+
+        echo "========== VERIFY MAVEN =========="
+        mvn -version
+
+        echo "========== BUILD APPLICATION =========="
+        mvn -B clean package -DskipTests
+
+        echo "========== BUILD COMPLETED =========="
+    '''
 }
+    // Stage 4: Docker Image Build
+   
+  sh '''
+    docker build \
+        --platform linux/amd64 \
+        -t $IMAGE_NAME:$IMAGE_TAG \
+        --pull \
+        --no-cache .
+ '''
+      
+    }
 
+    // Stage 5: Publish Image to Docker Hub
+    stage('Publishing Image to DockerHub') {
 
+        echo 'Pushing Docker image to Docker Hub'
+
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'dockerHubAccount',
+                usernameVariable: 'DOCKERHUB_USER',
+                passwordVariable: 'DOCKERHUB_PASSWORD'
+            )
+        ]) {
+
+            sh '''
+                echo "$DOCKERHUB_PASSWORD" | docker login \
+                    --username "$DOCKERHUB_USER" \
+                    --password-stdin
+
+                docker tag \
+                    $IMAGE_NAME:$IMAGE_TAG \
+                    $DOCKERHUB_USER/$IMAGE_NAME:$IMAGE_TAG
+
+                docker push $DOCKERHUB_USER/$IMAGE_NAME:$IMAGE_TAG
+
+                echo "Image push completed"
+
+                docker logout
+            '''
+        }
+    }
+
+    // Stage 6: Ansible Playbook Execution
+    stage('Ansible Playbook Execution') {
+
+        echo 'Deploying application using Ansible'
+
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'dockerHubAccount',
+                usernameVariable: 'DOCKERHUB_USER',
+                passwordVariable: 'DOCKERHUB_PASSWORD'
+            )
+        ]) {
+
+            sh '''
+                export ANSIBLE_HOST_KEY_CHECKING=False
+
+                test -f inventory.yaml
+                test -f containerDeploy.yaml
+                test -f /var/lib/jenkins/server.pem
+
+                ansible-playbook \
+                    -i inventory.yaml \
+                    containerDeploy.yaml \
+                    -e "httpPort=$HTTP_PORT" \
+                    -e "containerName=$CONTAINER_NAME" \
+                    -e "dockerImageTag=$DOCKERHUB_USER/$IMAGE_NAME:$IMAGE_TAG" \
+                    -e "key_pair_path=/var/lib/jenkins/server.pem" \
+                    --become
+            '''
+        }
+    }
+
+    echo 'BankPro CI/CD Pipeline Completed Successfully!'
+}
