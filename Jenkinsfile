@@ -1,6 +1,9 @@
 
 node {
 
+    // Configure Docker PATH for Jenkins
+    env.PATH = "/usr/local/bin:${env.PATH}"
+
     // Project configuration
     env.IMAGE_NAME = "bankingapp"
     env.CONTAINER_NAME = "bankingapp"
