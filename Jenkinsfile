@@ -43,15 +43,30 @@ node {
         echo 'GitHub checkout completed'
     }
 
-    // Stage 3: Maven Build
-    stage('Maven Build') {
+// Stage 3: Maven Build
+stage('Maven Build') {
 
-        echo 'Building Spring Boot application using Maven'
+    echo 'Building Spring Boot application using Java 11'
 
-        sh '/opt/homebrew/bin/mvn -B clean package'
+    sh '''
+        set -e
 
-        echo 'Maven build completed'
-    }
+        export JAVA_HOME=$(/usr/libexec/java_home -v 11)
+        export PATH="$JAVA_HOME/bin:/opt/homebrew/bin:/usr/bin:/bin"
+
+        echo "========== JAVA VERSION =========="
+        which java
+        java -version
+
+        echo "========== MAVEN VERSION =========="
+        /opt/homebrew/bin/mvn -version
+
+        echo "========== MAVEN BUILD =========="
+        /opt/homebrew/bin/mvn -B clean package -DskipTests
+
+        echo "========== BUILD SUCCESSFUL =========="
+    '''
+}
 
     // Stage 4: Docker Image Build
     stage('Docker Image Build') {
