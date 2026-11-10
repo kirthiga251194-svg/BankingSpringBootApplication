@@ -62,7 +62,8 @@ stage('Maven Build') {
     '''
 }
     // Stage 4: Docker Image Build
-   
+
+ stage('Docker Image Build') {   
   sh '''
     docker build \
         --platform linux/amd64 \
