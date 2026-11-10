@@ -68,41 +68,46 @@ stage('Maven Build') {
     '''
 }
 
-    // Stage 4: Docker Image Build
-    stage('Docker Image Build') {
+   
+// Stage 4: Docker Image Build
+stage('Docker Image Build') {
 
-        echo 'Creating Docker image'
+    echo 'Creating Docker image'
 
-        sh 'docker build -t "$IMAGE_NAME" --pull --no-cache .'
+    sh '''
+        docker build \
+            --pull \
+            --no-cache \
+            -t kirthigaravi/bankingapp:3.0 .
+    '''
 
-        echo 'Docker image build completed'
-    }
+    echo 'Docker image build completed'
+}
 
-    // Stage 5: Publish Image to DockerHub
-    stage('Publishing Image to DockerHub') {
 
-        echo 'Publishing Docker image to DockerHub'
+// Stage 5: Publishing Image to DockerHub
+stage('Publishing Image to DockerHub') {
 
-        withCredentials([usernamePassword(
+    withCredentials([
+        usernamePassword(
             credentialsId: 'dockerHubAccount',
             usernameVariable: 'DOCKERHUB_USER',
             passwordVariable: 'DOCKERHUB_PASSWORD'
-        )]) {
+        )
+    ]) {
 
-            sh '''
-                set +x
+        sh '''
+            echo "$DOCKERHUB_PASSWORD" | docker login \
+                -u "$DOCKERHUB_USER" \
+                --password-stdin
 
-                printf '%s' "$DOCKERHUB_PASSWORD" |
-                docker login --username "$DOCKERHUB_USER" --password-stdin
+            docker push kirthigaravi/bankingapp:3.0
 
-                docker push "$IMAGE_NAME"
-
-                docker logout
-            '''
-        }
-
-        echo 'Docker image publishing completed'
+            docker logout
+        '''
     }
+}
+
 
     // Stage 6: Ansible Deployment to AWS EC2
     stage('Ansible Playbook Execution') {
