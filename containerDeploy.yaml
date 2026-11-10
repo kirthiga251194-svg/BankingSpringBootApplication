@@ -1,7 +1,8 @@
 
 ---
+- ---
 - name: Deploy Banking Application on AWS EC2
-  hosts: aws
+  hosts: bankpro-server
   become: true
 
   tasks:
