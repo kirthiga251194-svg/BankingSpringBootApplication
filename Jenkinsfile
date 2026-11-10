@@ -126,7 +126,7 @@ stage('Maven Build') {
 
                 test -f inventory.yaml
                 test -f containerDeploy.yaml
-                test -f /var/lib/jenkins/server.pem
+                test -f /Users/karthik/Downloads/bankpro-key.pem
 
                 ansible-playbook \
                     -i inventory.yaml \
@@ -134,7 +134,7 @@ stage('Maven Build') {
                     -e "httpPort=$HTTP_PORT" \
                     -e "containerName=$CONTAINER_NAME" \
                     -e "dockerImageTag=$DOCKERHUB_USER/$IMAGE_NAME:$IMAGE_TAG" \
-                    -e "key_pair_path=/var/lib/jenkins/server.pem" \
+                    -e "key_pair_path=/Users/karthik/Downloads/bankpro-key.pem" \
                     --become
             '''
         }
